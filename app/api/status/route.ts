@@ -10,12 +10,10 @@ export async function GET() {
     .eq('key', 'SYSTEM')
     .single()
 
-  console.log('DATA:', JSON.stringify(data))
-  console.log('ERROR:', JSON.stringify(error))
-
-  if (error) {
-    return NextResponse.json({ status: 'ERROR', detail: error.message })
+  if (error || !data) {
+    return NextResponse.json({ status: 'ON' })
   }
 
-  return NextResponse.json({ status: data.value ?? 'ON' })
+  const row = data as { value: string }
+  return NextResponse.json({ status: row.value ?? 'ON' })
 }
