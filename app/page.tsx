@@ -16,8 +16,14 @@ export default function Home() {
       .catch(e => { setError(e.message); setLoading(false) })
   }, [])
 
-  async function markUsed(id: number) {
+  async function openAndMark(id: number, url: string) {
+    if (marking === id) return
     setMarking(id)
+
+    // เปิดลิงก์ทันที
+    window.open(url, '_blank')
+
+    // เปลี่ยน status พร้อมกัน
     try {
       const res = await fetch('/api/use', {
         method: 'PATCH',
@@ -84,7 +90,6 @@ export default function Home() {
               <th>ชื่อ</th>
               <th>ลิงก์</th>
               <th>สถานะ</th>
-              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -93,26 +98,24 @@ export default function Home() {
                 <td className={styles.numCol}>{i + 1}</td>
                 <td>{l.name}</td>
                 <td>
-                  <a href={l.link} target="_blank" rel="noopener noreferrer">
-                    เปิดลิงก์ ↗
-                  </a>
+                  {l.status === 'Used'
+                    ? <span style={{ color: 'var(--muted)', fontSize: 13 }}>ใช้แล้ว</span>
+                    : (
+                      <button
+                        onClick={() => openAndMark(l.id, l.link)}
+                        disabled={marking === l.id}
+                        className={styles.useBtn}
+                      >
+                        {marking === l.id ? 'กำลังเปิด...' : 'เปิดลิงก์ ↗'}
+                      </button>
+                    )
+                  }
                 </td>
                 <td>
                   {l.status === 'Used'
                     ? <span className={styles.badgeUsed}>ใช้แล้ว</span>
                     : <span className={styles.badgeAvail}>พร้อมใช้</span>
                   }
-                </td>
-                <td>
-                  {l.status !== 'Used' && (
-                    <button
-                      onClick={() => markUsed(l.id)}
-                      disabled={marking === l.id}
-                      className={styles.useBtn}
-                    >
-                      {marking === l.id ? 'กำลังบันทึก...' : 'ใช้งาน'}
-                    </button>
-                  )}
                 </td>
               </tr>
             ))}
