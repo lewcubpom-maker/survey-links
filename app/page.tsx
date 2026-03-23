@@ -13,10 +13,10 @@ export default function Home() {
   useEffect(() => {
     async function load() {
       try {
-        const [linksRes, statusRes] = await Promise.all([
-          fetch('/api/links'),
-          fetch('/api/status'),
-        ])
+const [linksRes, statusRes] = await Promise.all([
+  fetch('/api/links', { cache: 'no-store' }),
+  fetch('/api/status', { cache: 'no-store' }),
+])
         const linksData  = await linksRes.json()
         const statusData = await statusRes.json()
 
