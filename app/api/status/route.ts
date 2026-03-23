@@ -14,6 +14,5 @@ export async function GET() {
     return NextResponse.json({ status: 'ON' })
   }
 
-  const row = data as { value: string }
-  return NextResponse.json({ status: row.value ?? 'ON' })
+  return NextResponse.json({ status: (data as any).value ?? 'ON' })
 }
