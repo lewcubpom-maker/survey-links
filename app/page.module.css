@@ -111,3 +111,13 @@
 @keyframes spin { to { transform: rotate(360deg); } }
 .loadingText { font-size: 13px; color: var(--muted); }
 .errorText   { font-size: 13px; color: var(--red); }
+
+.adminSection { margin-top: 12px; padding-top: 12px; border-top: 0.5px solid var(--border); }
+.adminInfo { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.adminBadge { font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 999px; background: var(--accent); color: #fff; }
+.btnLogout { font-size: 12px; padding: 4px 10px; border-radius: var(--radius-sm); border: 0.5px solid var(--border2); background: transparent; color: var(--muted); cursor: pointer; font-family: inherit; }
+.btnLogout:hover { background: var(--red-bg); color: var(--red); border-color: var(--red); }
+.btnAdminLogin { width: 100%; padding: 7px; border-radius: var(--radius-sm); border: 0.5px solid var(--border2); background: transparent; color: var(--muted); cursor: pointer; font-family: inherit; font-size: 12px; transition: background .15s, color .15s; }
+.btnAdminLogin:hover { background: var(--bg); color: var(--text); }
+.fieldInputError { border-color: var(--red) !important; }
+.fieldError { font-size: 12px; color: var(--red); margin-top: 4px; }

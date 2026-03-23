@@ -4,8 +4,9 @@ import type { Link } from '@/lib/supabase'
 import styles from './page.module.css'
 
 const PER_PAGE = 100
+const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD ?? ''
 
-type ModalMode = 'add' | 'edit' | null
+type ModalMode = 'add' | 'edit' | 'adminLogin' | null
 
 export default function Home() {
   const [links, setLinks]           = useState<Link[]>([])
@@ -22,6 +23,9 @@ export default function Home() {
   const [deleting, setDeleting]     = useState<number | null>(null)
   const [toast, setToast]           = useState<string | null>(null)
   const [importing, setImporting]   = useState(false)
+  const [isAdmin, setIsAdmin]       = useState(false)
+  const [adminPw, setAdminPw]       = useState('')
+  const [pwError, setPwError]       = useState(false)
   const toastTimer                  = useRef<ReturnType<typeof setTimeout> | null>(null)
   const fileInputRef                = useRef<HTMLInputElement>(null)
 
@@ -43,7 +47,31 @@ export default function Home() {
     }
   }
 
-  useEffect(() => { loadLinks() }, [])
+  useEffect(() => {
+    loadLinks()
+    // เช็ค admin session
+    const saved = sessionStorage.getItem('isAdmin')
+    if (saved === 'true') setIsAdmin(true)
+  }, [])
+
+  function submitAdminLogin() {
+    if (adminPw === ADMIN_PASSWORD) {
+      setIsAdmin(true)
+      sessionStorage.setItem('isAdmin', 'true')
+      setModal(null)
+      setAdminPw('')
+      setPwError(false)
+      showToast('เข้าสู่ระบบ Admin แล้ว')
+    } else {
+      setPwError(true)
+    }
+  }
+
+  function logout() {
+    setIsAdmin(false)
+    sessionStorage.removeItem('isAdmin')
+    showToast('ออกจากระบบแล้ว')
+  }
 
   async function openAndMark(id: number, url: string) {
     if (marking === id) return
@@ -130,6 +158,8 @@ export default function Home() {
     setModal(null)
     setEditTarget(null)
     setForm({ name: '', link: '' })
+    setAdminPw('')
+    setPwError(false)
   }
 
   function exportCSV() {
@@ -146,22 +176,19 @@ export default function Home() {
     showToast('Export เสร็จแล้ว')
   }
 
-  function triggerImport() {
-    fileInputRef.current?.click()
-  }
+  function triggerImport() { fileInputRef.current?.click() }
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
     setImporting(true)
-
     try {
       const text = await file.text()
       const lines = text.split('\n').filter(l => l.trim())
       if (lines.length < 2) { alert('ไฟล์ไม่มีข้อมูล'); return }
 
       const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim().toLowerCase())
-      const nameIdx   = headers.findIndex(h => ['name','ชื่อ','ชื่อ'].includes(h))
+      const nameIdx   = headers.findIndex(h => ['name','ชื่อ'].includes(h))
       const linkIdx   = headers.findIndex(h => ['link','ลิงก์','url'].includes(h))
       const statusIdx = headers.findIndex(h => ['status','สถานะ'].includes(h))
 
@@ -263,6 +290,21 @@ export default function Home() {
           </div>
           <p className={styles.progressSub}>{used} / {total} ลิงก์ถูกใช้แล้ว</p>
         </div>
+
+        {/* ADMIN LOGIN / LOGOUT */}
+        <div className={styles.adminSection}>
+          {isAdmin ? (
+            <div className={styles.adminInfo}>
+              <span className={styles.adminBadge}>Admin</span>
+              <button className={styles.btnLogout} onClick={logout}>ออกจากระบบ</button>
+            </div>
+          ) : (
+            <button className={styles.btnAdminLogin}
+              onClick={() => setModal('adminLogin')}>
+              เข้าสู่ระบบ Admin
+            </button>
+          )}
+        </div>
       </aside>
 
       {/* MAIN */}
@@ -274,19 +316,21 @@ export default function Home() {
               {filtered.length} รายการ{search ? ` · ค้นหา "${search}"` : ''}
             </p>
           </div>
-          <div className={styles.headerActions}>
-            <button className={styles.btnSecondary} onClick={triggerImport} disabled={importing}>
-              {importing ? 'กำลังนำเข้า...' : '↑ Import CSV'}
-            </button>
-            <input ref={fileInputRef} type="file" accept=".csv"
-              style={{ display: 'none' }} onChange={handleFileChange} />
-            <button className={styles.btnSecondary} onClick={exportCSV}>
-              ↓ Export CSV
-            </button>
-            <button className={styles.btnPrimary} onClick={openAdd}>
-              + เพิ่มลิงก์
-            </button>
-          </div>
+          {isAdmin && (
+            <div className={styles.headerActions}>
+              <button className={styles.btnSecondary} onClick={triggerImport} disabled={importing}>
+                {importing ? 'กำลังนำเข้า...' : '↑ Import CSV'}
+              </button>
+              <input ref={fileInputRef} type="file" accept=".csv"
+                style={{ display: 'none' }} onChange={handleFileChange} />
+              <button className={styles.btnSecondary} onClick={exportCSV}>
+                ↓ Export CSV
+              </button>
+              <button className={styles.btnPrimary} onClick={openAdd}>
+                + เพิ่มลิงก์
+              </button>
+            </div>
+          )}
         </header>
 
         <div className={styles.stats}>
@@ -348,12 +392,16 @@ export default function Home() {
                           {marking === l.id ? '...' : 'เปิด ↗'}
                         </button>
                       )}
-                      <button className={styles.btnEdit} onClick={() => openEdit(l)}>แก้ไข</button>
-                      <button className={styles.btnDel}
-                        onClick={() => deleteLink(l.id)}
-                        disabled={deleting === l.id}>
-                        {deleting === l.id ? '...' : 'ลบ'}
-                      </button>
+                      {isAdmin && (
+                        <>
+                          <button className={styles.btnEdit} onClick={() => openEdit(l)}>แก้ไข</button>
+                          <button className={styles.btnDel}
+                            onClick={() => deleteLink(l.id)}
+                            disabled={deleting === l.id}>
+                            {deleting === l.id ? '...' : 'ลบ'}
+                          </button>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -389,8 +437,8 @@ export default function Home() {
         )}
       </main>
 
-      {/* MODAL */}
-      {modal && (
+      {/* MODAL — ADD / EDIT */}
+      {(modal === 'add' || modal === 'edit') && (
         <div className={styles.overlay} onClick={closeModal}>
           <div className={styles.modalCard} onClick={e => e.stopPropagation()}>
             <div className={styles.modalHeader}>
@@ -414,6 +462,38 @@ export default function Home() {
               <button className={styles.btnPrimary} onClick={saveLink}
                 disabled={saving || !form.name.trim() || !form.link.trim()}>
                 {saving ? 'กำลังบันทึก...' : 'บันทึก'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL — ADMIN LOGIN */}
+      {modal === 'adminLogin' && (
+        <div className={styles.overlay} onClick={closeModal}>
+          <div className={styles.modalCard} onClick={e => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h2 className={styles.modalTitle}>เข้าสู่ระบบ Admin</h2>
+              <button className={styles.modalClose} onClick={closeModal}>✕</button>
+            </div>
+            <div className={styles.modalBody}>
+              <label className={styles.fieldLabel}>รหัสผ่าน</label>
+              <input
+                className={`${styles.fieldInput} ${pwError ? styles.fieldInputError : ''}`}
+                type="password"
+                placeholder="ใส่รหัสผ่าน Admin"
+                value={adminPw}
+                onChange={e => { setAdminPw(e.target.value); setPwError(false) }}
+                onKeyDown={e => e.key === 'Enter' && submitAdminLogin()}
+                autoFocus
+              />
+              {pwError && <p className={styles.fieldError}>รหัสผ่านไม่ถูกต้อง</p>}
+            </div>
+            <div className={styles.modalFooter}>
+              <button className={styles.btnSecondary} onClick={closeModal}>ยกเลิก</button>
+              <button className={styles.btnPrimary} onClick={submitAdminLogin}
+                disabled={!adminPw.trim()}>
+                เข้าสู่ระบบ
               </button>
             </div>
           </div>
