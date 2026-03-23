@@ -16,14 +16,10 @@ export default function Home() {
       .catch(e => { setError(e.message); setLoading(false) })
   }, [])
 
-  async function openAndMark(id: number, url: string) {
+async function openAndMark(id: number, url: string) {
     if (marking === id) return
     setMarking(id)
 
-    // เปิดลิงก์ทันที
-    window.open(url, '_blank')
-
-    // เปลี่ยน status พร้อมกัน
     try {
       const res = await fetch('/api/use', {
         method: 'PATCH',
@@ -38,6 +34,7 @@ export default function Home() {
       alert(e instanceof Error ? e.message : 'เกิดข้อผิดพลาด')
     } finally {
       setMarking(null)
+      window.open(url, '_blank')  // เปิดลิงก์หลัง save เสร็จ
     }
   }
 
