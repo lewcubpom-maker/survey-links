@@ -1,8 +1,8 @@
 import { supabase } from '@/lib/supabase'
 import { NextRequest, NextResponse } from 'next/server'
 
-// แทน markAsUsed(rowNumber) ใน Apps Script
-// รับ { id: number } แล้วอัปเดต status → "Used"
+export const dynamic = 'force-dynamic'
+
 export async function PATCH(req: NextRequest) {
   let id: number
 
@@ -14,15 +14,19 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'กรุณาส่ง id ที่ถูกต้อง' }, { status: 400 })
   }
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('links')
     .update({ status: 'Used' })
     .eq('id', id)
+    .select()
+
+  console.log('UPDATE id:', id)
+  console.log('DATA:', JSON.stringify(data))
+  console.log('ERROR:', JSON.stringify(error))
 
   if (error) {
-    console.error('PATCH /api/use error:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: error.message, detail: error }, { status: 500 })
   }
 
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({ ok: true, data })
 }
