@@ -21,7 +21,9 @@ export default function Home() {
   const [saving, setSaving]         = useState(false)
   const [deleting, setDeleting]     = useState<number | null>(null)
   const [toast, setToast]           = useState<string | null>(null)
+  const [importing, setImporting]   = useState(false)
   const toastTimer                  = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const fileInputRef                = useRef<HTMLInputElement>(null)
 
   function showToast(msg: string) {
     setToast(msg)
@@ -144,11 +146,63 @@ export default function Home() {
     showToast('Export เสร็จแล้ว')
   }
 
+  function triggerImport() {
+    fileInputRef.current?.click()
+  }
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImporting(true)
+
+    try {
+      const text = await file.text()
+      const lines = text.split('\n').filter(l => l.trim())
+      if (lines.length < 2) { alert('ไฟล์ไม่มีข้อมูล'); return }
+
+      const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim().toLowerCase())
+      const nameIdx   = headers.findIndex(h => ['name','ชื่อ','ชื่อ'].includes(h))
+      const linkIdx   = headers.findIndex(h => ['link','ลิงก์','url'].includes(h))
+      const statusIdx = headers.findIndex(h => ['status','สถานะ'].includes(h))
+
+      if (nameIdx === -1 || linkIdx === -1) {
+        alert('ไม่พบคอลัมน์ name และ link\nกรุณาตรวจสอบ header บรรทัดแรก')
+        return
+      }
+
+      const rows = lines.slice(1).map(line => {
+        const cols = line.split(',').map(c => c.replace(/^"|"$/g, '').trim())
+        return {
+          name:   cols[nameIdx]   || '',
+          link:   cols[linkIdx]   || '',
+          status: statusIdx >= 0 ? (cols[statusIdx] || '') : '',
+        }
+      }).filter(r => r.name && r.link)
+
+      if (rows.length === 0) { alert('ไม่พบข้อมูลที่ถูกต้อง'); return }
+      if (!confirm(`พบ ${rows.length} รายการ\nต้องการนำเข้าทั้งหมดไหม?`)) return
+
+      const res = await fetch('/api/links/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rows }),
+      })
+      if (!res.ok) throw new Error()
+      showToast(`นำเข้า ${rows.length} รายการแล้ว`)
+      await loadLinks()
+    } catch {
+      alert('นำเข้าไม่สำเร็จ')
+    } finally {
+      setImporting(false)
+      e.target.value = ''
+    }
+  }
+
   const filtered = links.filter(l => {
     const q = search.toLowerCase()
     const matchSearch = l.name.toLowerCase().includes(q) || l.link.toLowerCase().includes(q)
     const matchFilter =
-      filter === 'all' ? true :
+      filter === 'all'       ? true :
       filter === 'available' ? l.status !== 'Used' :
       l.status === 'Used'
     return matchSearch && matchFilter
@@ -188,7 +242,7 @@ export default function Home() {
             <button key={f}
               className={`${styles.navItem} ${filter === f ? styles.navActive : ''}`}
               onClick={() => { setFilter(f); setPage(1) }}>
-              <span className={styles.navDot} data-f={f} />
+              <span className={`${styles.navDot} ${f === 'available' ? styles.navDotGreen : f === 'used' ? styles.navDotGray : ''}`} />
               <span className={styles.navLabel}>
                 {f === 'all' ? 'ทั้งหมด' : f === 'available' ? 'พร้อมใช้' : 'ใช้แล้ว'}
               </span>
@@ -216,9 +270,16 @@ export default function Home() {
         <header className={styles.header}>
           <div>
             <h1 className={styles.title}>จัดการลิงก์</h1>
-            <p className={styles.subtitle}>{filtered.length} รายการ{search ? ` · ค้นหา "${search}"` : ''}</p>
+            <p className={styles.subtitle}>
+              {filtered.length} รายการ{search ? ` · ค้นหา "${search}"` : ''}
+            </p>
           </div>
           <div className={styles.headerActions}>
+            <button className={styles.btnSecondary} onClick={triggerImport} disabled={importing}>
+              {importing ? 'กำลังนำเข้า...' : '↑ Import CSV'}
+            </button>
+            <input ref={fileInputRef} type="file" accept=".csv"
+              style={{ display: 'none' }} onChange={handleFileChange} />
             <button className={styles.btnSecondary} onClick={exportCSV}>
               ↓ Export CSV
             </button>
@@ -230,11 +291,11 @@ export default function Home() {
 
         <div className={styles.stats}>
           {[
-            { label: 'ทั้งหมด',   value: total, type: 'total' },
-            { label: 'พร้อมใช้',  value: avail, type: 'avail' },
-            { label: 'ใช้แล้ว',   value: used,  type: 'used'  },
+            { label: 'ทั้งหมด',  value: total, type: 'total' },
+            { label: 'พร้อมใช้', value: avail, type: 'avail' },
+            { label: 'ใช้แล้ว',  value: used,  type: 'used'  },
           ].map(s => (
-            <div key={s.label} className={styles.statCard} data-type={s.type}>
+            <div key={s.label} className={`${styles.statCard} ${styles['statCard_' + s.type]}`}>
               <span className={styles.statNum}>{s.value}</span>
               <span className={styles.statLabel}>{s.label}</span>
             </div>
