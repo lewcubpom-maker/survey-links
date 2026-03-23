@@ -9,12 +9,12 @@ export default function Home() {
   const [marking, setMarking] = useState<number | null>(null)
   const [error, setError]     = useState<string | null>(null)
 
-  useEffect(() => {
-    fetch('/api/links', { cache: 'no-store' })
-      .then(r => r.json())
-      .then(data => { setLinks(data); setLoading(false) })
-      .catch(e => { setError(e.message); setLoading(false) })
-  }, [])
+useEffect(() => {
+  fetch(`/api/links?t=${Date.now()}`)
+    .then(r => r.json())
+    .then(data => { setLinks(data); setLoading(false) })
+    .catch(e => { setError(e.message); setLoading(false) })
+}, [])
 
 async function openAndMark(id: number, url: string) {
   if (marking === id) return
