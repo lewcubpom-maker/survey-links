@@ -17,26 +17,30 @@ export default function Home() {
   }, [])
 
 async function openAndMark(id: number, url: string) {
-    if (marking === id) return
-    setMarking(id)
+  if (marking === id) return
+  setMarking(id)
 
-    try {
-      const res = await fetch('/api/use', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id }),
-      })
-      if (!res.ok) throw new Error('เกิดข้อผิดพลาด')
-      setLinks(prev =>
-        prev.map(l => l.id === id ? { ...l, status: 'Used' } : l)
-      )
-    } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : 'เกิดข้อผิดพลาด')
-    } finally {
-      setMarking(null)
-      window.open(url, '_blank')  // เปิดลิงก์หลัง save เสร็จ
-    }
+  try {
+    const res = await fetch('/api/use', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    })
+    if (!res.ok) throw new Error('เกิดข้อผิดพลาด')
+    
+    // update UI ก่อน
+    setLinks(prev =>
+      prev.map(l => l.id === id ? { ...l, status: 'Used' } : l)
+    )
+    // แล้วค่อยเปิดลิงก์
+    window.open(url, '_blank')
+    
+  } catch (e: unknown) {
+    alert(e instanceof Error ? e.message : 'เกิดข้อผิดพลาด')
+  } finally {
+    setMarking(null)
   }
+}
 
   const total = links.length
   const used  = links.filter(l => l.status === 'Used').length
